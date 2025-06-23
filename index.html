@@ -1,21 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Temel sayfa ayarları -->
     <meta charset="UTF-8">
     <title>AI Destekli IDS Dashboard</title>
+    <!-- Chart.js kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* Genel sayfa stil ayarları */
         body {
             font-family: Arial, sans-serif;
             background: #f0f2f5;
             padding: 20px;
         }
 
+        /* Başlık stili */
         h1 {
             text-align: center;
             margin-bottom: 10px;
         }
 
+        /* Alarm kutusu stili */
         #alarm-box {
             text-align: center;
             color: white;
@@ -24,6 +29,7 @@
             margin-bottom: 20px;
         }
 
+        /* Tablo stili */
         table {
             width: 95%;
             margin: auto;
@@ -32,27 +38,32 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
 
+        /* Tablo hücre stili */
         th, td {
             border: 1px solid #ccc;
             padding: 8px;
             text-align: center;
         }
 
+        /* Tablo başlık stili */
         th {
             background-color: #333;
             color: white;
         }
 
+        /* Çift satır renklendirme */
         tr:nth-child(even) {
             background-color: #f9f9f9;
         }
 
+        /* Grafik alanı stili */
         canvas {
             display: block;
             margin: 40px auto;
             max-width: 600px;
         }
 
+        /* İndirme butonu stili */
         .download-btn {
             display: inline-block;
             background-color: #4CAF50;
@@ -64,23 +75,29 @@
             font-weight: bold;
         }
 
+        /* Ortalama stili */
         .center {
             text-align: center;
         }
     </style>
 </head>
 <body>
+    <!-- Ana başlık -->
     <h1>AI Destekli IDS Tahmin Geçmişi</h1>
 
+    <!-- CSV indirme butonu -->
     <div class="center">
         <a href="/export_csv" class="download-btn">Tahminleri CSV Olarak İndir</a>
     </div>
 
+    <!-- Alarm durum göstergesi -->
     <div id="alarm-box">Yükleniyor...</div>
 
+    <!-- Grafikler için canvas elementleri -->
     <canvas id="attackChart" width="600" height="300"></canvas>
     <canvas id="lineChart" width="600" height="300"></canvas>
 
+    <!-- Tahmin geçmişi tablosu -->
     <table class="table table-striped">
       <thead>
         <tr>
@@ -91,6 +108,7 @@
         </tr>
       </thead>
       <tbody>
+        <!-- Backend'den gelen verileri tabloya doldur -->
         {% for row in rows %}
         <tr>
           <td>{{ row[0] }}</td>
@@ -103,15 +121,18 @@
     </table>
 
     <script>
+        // Grafik nesnelerini tutacak değişkenler
         let pieChart;
         let lineChart;
 
+        // Dashboard'u güncelleme fonksiyonu
         function updateDashboard() {
-            // 1. Pie Chart ve Alarm Bilgisi
+            // 1. Pasta grafiği ve alarm bilgisi güncelleme
             fetch('/stats')
                 .then(res => res.json())
                 .then(data => {
                     const alarmBox = document.getElementById("alarm-box");
+                    // Saldırı durumuna göre alarm kutusunu güncelle
                     if (data.attack > 0 && data.attack >= data.normal) {
                         alarmBox.innerText = "⚠️ SALDIRI TESPİT EDİLDİ!";
                         alarmBox.style.backgroundColor = "red";
@@ -120,6 +141,7 @@
                         alarmBox.style.backgroundColor = "green";
                     }
 
+                    // Pasta grafiğini oluştur veya güncelle
                     const ctxPie = document.getElementById('attackChart').getContext('2d');
                     if (pieChart) pieChart.destroy();
                     pieChart = new Chart(ctxPie, {
@@ -134,7 +156,7 @@
                     });
                 });
 
-            // 2. Line Chart (Saatlik Dağılım)
+            // 2. Çizgi grafiği (Saatlik dağılım) güncelleme
             fetch('/hourly_stats')
                 .then(res => res.json())
                 .then(data => {
@@ -142,6 +164,7 @@
                     const normalCounts = hours.map(h => data[h].normal || 0);
                     const attackCounts = hours.map(h => data[h].attack || 0);
 
+                    // Çizgi grafiğini oluştur veya güncelle
                     const ctxLine = document.getElementById('lineChart').getContext('2d');
                     if (lineChart) lineChart.destroy();
                     lineChart = new Chart(ctxLine, {
@@ -178,7 +201,9 @@
                 });
         }
 
+        // Sayfa yüklendiğinde dashboard'u güncelle
         updateDashboard();
+        // 15 saniyede bir dashboard'u otomatik güncelle
         setInterval(updateDashboard, 15000);
     </script>
 </body>
