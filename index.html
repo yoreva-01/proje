@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Destekli IDS Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        #alarm-box {
+            text-align: center;
+            color: white;
+            padding: 15px;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 95%;
+            margin: auto;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #333;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        canvas {
+            display: block;
+            margin: 40px auto;
+            max-width: 600px;
+        }
+
+        .download-btn {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            margin: 10px auto 30px auto;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .center {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI Destekli IDS Tahmin Geçmişi</h1>
+
+    <div class="center">
+        <a href="/export_csv" class="download-btn">Tahminleri CSV Olarak İndir</a>
+    </div>
+
+    <div id="alarm-box">Yükleniyor...</div>
+
+    <canvas id="attackChart" width="600" height="300"></canvas>
+    <canvas id="lineChart" width="600" height="300"></canvas>
+
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Tahmin</th>
+          <th>Etiket</th>
+          <th>Zaman</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>{{ row[0] }}</td>
+          <td>{{ row[1] }}</td>
+          <td>{{ row[2] }}</td>
+          <td>{{ row[3] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <script>
+        let pieChart;
+        let lineChart;
+
+        function updateDashboard() {
+            // 1. Pie Chart ve Alarm Bilgisi
+            fetch('/stats')
+                .then(res => res.json())
+                .then(data => {
+                    const alarmBox = document.getElementById("alarm-box");
+                    if (data.attack > 0 && data.attack >= data.normal) {
+                        alarmBox.innerText = "⚠️ SALDIRI TESPİT EDİLDİ!";
+                        alarmBox.style.backgroundColor = "red";
+                    } else {
+                        alarmBox.innerText = "✔️ Sistem Güvende";
+                        alarmBox.style.backgroundColor = "green";
+                    }
+
+                    const ctxPie = document.getElementById('attackChart').getContext('2d');
+                    if (pieChart) pieChart.destroy();
+                    pieChart = new Chart(ctxPie, {
+                        type: 'pie',
+                        data: {
+                            labels: ['Normal', 'Attack'],
+                            datasets: [{
+                                data: [data.normal, data.attack],
+                                backgroundColor: ['#36a2eb', '#ff6384']
+                            }]
+                        }
+                    });
+                });
+
+            // 2. Line Chart (Saatlik Dağılım)
+            fetch('/hourly_stats')
+                .then(res => res.json())
+                .then(data => {
+                    const hours = Object.keys(data);
+                    const normalCounts = hours.map(h => data[h].normal || 0);
+                    const attackCounts = hours.map(h => data[h].attack || 0);
+
+                    const ctxLine = document.getElementById('lineChart').getContext('2d');
+                    if (lineChart) lineChart.destroy();
+                    lineChart = new Chart(ctxLine, {
+                        type: 'line',
+                        data: {
+                            labels: hours,
+                            datasets: [
+                                {
+                                    label: 'Normal',
+                                    data: normalCounts,
+                                    borderColor: '#36a2eb',
+                                    fill: false
+                                },
+                                {
+                                    label: 'Attack',
+                                    data: attackCounts,
+                                    borderColor: '#ff6384',
+                                    fill: false
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                x: {
+                                    ticks: { maxRotation: 90, minRotation: 45 }
+                                },
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                });
+        }
+
+        updateDashboard();
+        setInterval(updateDashboard, 15000);
+    </script>
+</body>
+</html>
